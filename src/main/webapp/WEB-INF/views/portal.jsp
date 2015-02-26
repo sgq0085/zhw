@@ -36,6 +36,14 @@
             <input id="file_input" name="file" type="file" multiple="multiple">
         </div>
     </div>
+    <div class="form-group">
+        <label class="col-lg-offset-2 col-md-offset-2 col-lg-2 col-md-2 control-label">
+            <input type="checkbox" name="combineToExcel" checked> 合并到Excel
+        </label>
+        <label class="col-lg-2 col-md-2 control-label">
+            <input type="checkbox" name="processResult" checked> 输出最终结果
+        </label>
+    </div>
     <div class="col-lg-offset-5  col-md-offset-5 col-lg-3 col-md-3">
         <button id="submit" type="button" class="btn btn-primary">提交</button>
         <button type="reset" class="btn btn-info">重置</button>
@@ -76,18 +84,22 @@
                 bs_error("请选择要上传的文件");
                 return;
             }
+            bs_info('开始上传文件等待处理!');
+            $("#submit").attr("disabled", true);
             $("#form").ajaxSubmit({
                 url: "${ctx}/excel/upload",
                 success: function (event, status, xhr) {
                     if (event.success == true) {
-                        bs_info('上传成功等待下载结果文件!');
                         download(event.id);
+                        $("#submit").attr("disabled", false);
                     } else {
                         bs_error(event.msg);
+                        $("#submit").attr("disabled", false);
                     }
                 },
                 error: function (event) {
                     bs_error("处理失败");
+                    $("#submit").attr("disabled", false);
                 }
             });
         });

@@ -40,6 +40,8 @@ public class ExcelController {
         Map<String, Object> multipartFormData = Files.enctypeEqualsMultipartFormData(request, null);
         Map<String, String> params = (Map<String, String>) multipartFormData.get("params");
         String dataDate = params.get("dataDate");
+        String combineToExcel = params.get("combineToExcel");
+        String processResult = params.get("processResult");
         List<File> files = (List<File>) multipartFormData.get("files");
         if (StringUtils.isBlank(dataDate) || CollectionUtils.isEmpty(files)) {
             res.put("success", false);
@@ -48,7 +50,7 @@ public class ExcelController {
         }
         logger.info("启动任务 记账日期{},文件数{}", dataDate, files.size());
 
-        String id = excelService.process(dataDate, files);
+        String id = excelService.process(dataDate, StringUtils.isNoneBlank(combineToExcel), StringUtils.isNoneBlank(processResult), files);
         if (StringUtils.isBlank(id)) {
             return new ResponseEntity<Map<String, Object>>(res, HttpStatus.FORBIDDEN);
         }
