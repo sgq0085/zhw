@@ -19,7 +19,8 @@
     <link rel="shortcut icon" type="image/x-icon" href="${ctx}/static/images/favicon.ico"/>
 
     <link type="text/css" rel="stylesheet" href="${ctx}/static/bootstrap/bootstrap-3.2.0/css/bootstrap.min.css"/>
-    <link type="text/css" rel="stylesheet" href="${ctx}/static/bootstrap/datetimepicker-2.3.1/css/bootstrap-datetimepicker.min.css"/>
+    <link type="text/css" rel="stylesheet"
+          href="${ctx}/static/bootstrap/datetimepicker-2.3.1/css/bootstrap-datetimepicker.min.css"/>
     <link type="text/css" rel="stylesheet" href="${ctx}/static/bootstrap/fileinput-1.5.0/css/fileinput.min.css"/>
 
     <%--显示消息用CSS--%>
@@ -61,8 +62,10 @@
     <script type="text/javascript" src="${ctx}/static/jquery/jquery-1.11.1/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="${ctx}/static/jquery/jquery-form/jquery.form.js"></script>
     <script type="text/javascript" src="${ctx}/static/bootstrap/bootstrap-3.2.0/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="${ctx}/static/bootstrap/datetimepicker-2.3.1/js/bootstrap-datetimepicker.min.js"></script>
-    <script type="text/javascript" src="${ctx}/static/bootstrap/datetimepicker-2.3.1/js/locales/bootstrap-datetimepicker.zh-CN.js"></script>
+    <script type="text/javascript"
+            src="${ctx}/static/bootstrap/datetimepicker-2.3.1/js/bootstrap-datetimepicker.min.js"></script>
+    <script type="text/javascript"
+            src="${ctx}/static/bootstrap/datetimepicker-2.3.1/js/locales/bootstrap-datetimepicker.zh-CN.js"></script>
     <script type="text/javascript" src="${ctx}/static/bootstrap/fileinput-1.5.0/js/fileinput.min.js"></script>
 
 
@@ -267,6 +270,14 @@
         }
     </script>
 
+    <script type="text/javascript">
+        function flush() {
+            $.post("${ctx}/excel/flush", function (data) {
+                bs_info("清空缓存 " + data + "M");
+            });
+        }
+    </script>
+
     <sitemesh:write property='head'/>
 </head>
 <body>
@@ -291,7 +302,7 @@
                         <b class="caret"></b>
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a href="#">无</a></li>
+                        <li><a href="javascript:void(0);" onclick="flush()">清空缓存目录</a></li>
                     </ul>
                 </li>
             </ul>

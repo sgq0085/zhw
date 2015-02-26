@@ -14,13 +14,13 @@
 <form id="form" action="${ctx}/excel/upload" class="form-horizontal" method="post"
       enctype="multipart/form-data">
     <div class="form-group">
-        <label class="col-lg-3 col-md-3 control-label" for="dataDate">
+        <label class="col-lg-3 col-md-3 control-label" for="recordDay">
             <span style="color: red">*</span>记账日期：
         </label>
 
         <div class="col-lg-4 col-md-4">
             <div class="input-group date form_date">
-                <input id="dataDate" class="form-control input-sm" name="dataDate" type="text"/>
+                <input id="recordDay" class="form-control input-sm" name="recordDay" type="text"/>
                 <span class="input-group-addon input-sm btn">
                     <i class="glyphicon glyphicon-calendar"></i>
                 </span>
@@ -76,7 +76,7 @@
         });
 
         $("#submit").click(function () {
-            if ($("#dataDate").val().length == 0) {
+            if ($("#recordDay").val().length == 0) {
                 bs_error("请选择记账日期");
                 return;
             }
