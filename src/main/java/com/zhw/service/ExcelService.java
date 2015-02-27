@@ -5,9 +5,15 @@ import com.zhw.utils.Files;
 import com.zhw.utils.PropertiesLoader;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.poi.hssf.usermodel.DVConstraint;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddressList;
+import org.apache.poi.xssf.usermodel.XSSFDataValidation;
+import org.apache.poi.xssf.usermodel.XSSFDataValidationHelper;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.joda.time.DateTime;
 import org.joda.time.Days;
@@ -19,6 +25,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,7 +43,7 @@ public class ExcelService {
     protected static PropertiesLoader propertiesLoader = new PropertiesLoader("classpath:/auto.properties",
             "classpath:/organizations.properties", "classpath:/product.properties");
 
-    public String process(String recordDay, boolean combineToExcel, boolean processResult, List<File> files) {
+    public String process(String recordDay, boolean combineToExcel, boolean processResult, String min, String max, List<File> files) {
         File zip = null;
         String id = null;
         try {
@@ -45,7 +53,7 @@ public class ExcelService {
             File combineCSV = combineToCSV(dir, files);
             File combineExcel = combineToExcel(dir, files);
             // 处理结果
-            File resultExcel = this.resultExcel(recordDay, dir, combineCSV);
+            File resultExcel = this.resultExcel(recordDay, dir, combineCSV, min, max);
             logger.info("处理完成开始压缩文件");
             if (!combineToExcel || combineExcel == null) {
                 logger.info("内存溢出，无法完成合并Excel");
@@ -169,7 +177,7 @@ public class ExcelService {
         return combine;
     }
 
-    public File resultExcel(String recordDay, File dir, File combineCSV) {
+    public File resultExcel(String recordDay, File dir, File combineCSV, String min, String max) {
         logger.info("开始处理最终结果文件");
         File result = null;
         try {
@@ -200,8 +208,9 @@ public class ExcelService {
                     cell.setCellStyle(txtStyle);
                     cell.setCellValue(titleList.get(i));
                 }
-                String line = null;
+
                 // 遍历合并后的CSV文件
+                String line = null;
                 while ((line = in.readLine()) != null) {
                     row = (Row) sheet1.createRow(rowIndex);
                     String[] src = line.split(",", -1);
@@ -265,6 +274,15 @@ public class ExcelService {
                     }
                     rowIndex++;
                 }
+                // 统一设置 采取的措施 有效性数据 电话催收/上门催收
+                DataValidation dataValidation = getDataValidation((XSSFSheet) sheet1, 1, rowIndex, 18, 18);
+                sheet1.addValidationData(dataValidation);
+
+                // 统一设置 催收时间 时间范围
+                DataValidation dataRangeValidation = getDataRangeValidation((XSSFSheet) sheet1, 1, rowIndex, 19, 19, min, max);
+                if (dataRangeValidation != null) {
+                    sheet1.addValidationData(dataRangeValidation);
+                }
             } catch (Exception e) {
                 IOUtils.closeQuietly(in);
                 logger.warn("处理最终结果文件异常", e);
@@ -272,7 +290,6 @@ public class ExcelService {
             }
             // 创建文件流
             result = new File(dir.getAbsolutePath() + File.separator + "result.xlsx");
-            ;
             stream = new FileOutputStream(result);
             // 写入数据
             wb.write(stream);
@@ -336,7 +353,7 @@ public class ExcelService {
      * 超过每个月的“日”，逾期期数+1
      *
      * @param recordDay 记账日期
-     * @param overDay 还款日期
+     * @param overDay   还款日期
      */
     private String getOverdue(String recordDay, String overDay) {
         if ("0000-00-00".equals(overDay)) {
@@ -385,6 +402,9 @@ public class ExcelService {
         }
     }
 
+    /**
+     * 计算逾期多少天
+     */
     private String getOverdueDay(String recordDay, String overDay) {
         if ("0000-00-00".equals(overDay)) {
             return "不逾期";
@@ -411,6 +431,10 @@ public class ExcelService {
         }
     }
 
+    /**
+     * 逾期多少天所在范围
+     * <p>=IF(M3>90,"90+",IF(M3>60,"61-90",IF(M3>30,"31-60","8-30")))</p>
+     */
     private String getOverdueDayRange(String recordDay, String overDay) {
         String days = this.getOverdueDay(recordDay, overDay);
         if (!NumberUtils.isNumber(days)) {
@@ -429,6 +453,48 @@ public class ExcelService {
         }
     }
 
+    /**
+     * 设置采取的措施
+     */
+    private DataValidation getDataValidation(XSSFSheet sheet, int firstRow, int lastRow, int firstCol, int lastCol) {
+        XSSFDataValidationHelper helper = new XSSFDataValidationHelper(sheet);
+        //设置下拉列表的内容
+        String[] textlist = {"电话催收", "上门催收"};
+        DataValidationConstraint constraint = helper.createExplicitListConstraint(textlist);
+        // 设置数据有效性加载在哪个单元格上。 四个参数分别是：起始行、终止行、起始列、终止列
+        CellRangeAddressList regions = new CellRangeAddressList(firstRow, lastRow, firstCol, lastCol);
+        return helper.createValidation(constraint, regions);
+    }
+
+    private DataValidation getDataRangeValidation(XSSFSheet sheet, int firstRow, int lastRow, int firstCol, int lastCol, String min, String max) {
+        DateTime minDay = null;
+        DateTime maxDay = null;
+        try {
+            minDay = DateTime.parse(min, YYYY_MM_DD);
+            maxDay = DateTime.parse(max, YYYY_MM_DD);
+        } catch (Exception e) {
+            logger.info("设置时间范围失败 min : " + min + ", max : " + max + "", e);
+            return null;
+        }
+        List<String> arrays = Lists.newArrayList();
+        for (int i = 0; i < 100; i++) {
+            minDay = minDay.plusDays(1);
+            arrays.add(minDay.toString(YYYY_MM_DD));
+            if (minDay.equals(maxDay)) {
+                break;
+            }
+        }
+        String[] days = (String[])arrays.toArray(new String[]{});
+        XSSFDataValidationHelper helper = new XSSFDataValidationHelper(sheet);
+        DataValidationConstraint constraint = helper.createExplicitListConstraint(days);
+        // 设置数据有效性加载在哪个单元格上。 四个参数分别是：起始行、终止行、起始列、终止列
+        CellRangeAddressList regions = new CellRangeAddressList(firstRow, lastRow, firstCol, lastCol);
+        return helper.createValidation(constraint, regions);
+    }
+
+    /**
+     * 清空临时文件夹
+     */
     public long flushTemp() {
         File file = new File(TEMP_DIR);
         if (!file.exists()) {

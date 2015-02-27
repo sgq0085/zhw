@@ -19,8 +19,32 @@
         </label>
 
         <div class="col-lg-4 col-md-4">
-            <div class="input-group date form_date">
+            <div id="record" class="input-group date form_date">
                 <input id="recordDay" class="form-control input-sm" name="recordDay" type="text"/>
+                <span class="input-group-addon input-sm btn">
+                    <i class="glyphicon glyphicon-calendar"></i>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label class="col-lg-3 col-md-3 control-label">催收时间：</label>
+
+        <div class="col-lg-2 col-md-2">
+            <div id="minDay" class="input-group date form_date" style="width:200px;">
+                <input id="min" class="form-control input-sm" name="min" type="text"/>
+                <span class="input-group-addon input-sm btn">
+                    <i class="glyphicon glyphicon-calendar"></i>
+                </span>
+            </div>
+        </div>
+
+        <div class="col-lg-1 col-md-1" style="width:10px;margin-top：:30px;margin-left:30px;">—</div>
+
+        <div class="col-lg-2 col-md-2">
+            <div id="maxDay" class="input-group date form_date" style="width:200px;margin-left:20px">
+                <input id="max" class="form-control input-sm" name="max" type="text"/>
                 <span class="input-group-addon input-sm btn">
                     <i class="glyphicon glyphicon-calendar"></i>
                 </span>
@@ -51,7 +75,6 @@
 </form>
 <script type="text/javascript">
     $(function () {
-
         $("#file_input").fileinput({
             overwriteInitial: true,
             allowedPreviewTypes: ['text'],
@@ -73,6 +96,32 @@
             startView: 2,
             minView: 2,
             forceParse: 0
+        });
+
+        function download(id) {
+            var url = "${ctx}/excel/download";
+            var form = document.createElement("form");
+            var frag = document.createDocumentFragment();
+            frag.appendChild(form);
+            form.method = 'post';
+            form.action = url;
+            form.target = '_blank';
+            // 创建隐藏表单
+            var element = document.createElement("input");
+            element.setAttribute("type", "hidden");
+            element.setAttribute("name", "id");
+            element.setAttribute("value", id);
+            form.appendChild(element);
+            document.body.appendChild(frag);
+            form.submit();
+        }
+
+        $("#minDay").datetimepicker().on('changeDate', function (ev) {
+            $('#maxDay').datetimepicker('setStartDate', ev.date);
+        });
+
+        $("#maxDay").datetimepicker().on('changeDate', function (ev) {
+            $('#minDay').datetimepicker('setEndDate', ev.date);
         });
 
         $("#submit").click(function () {
@@ -104,24 +153,6 @@
             });
         });
     });
-
-    function download(id) {
-        var url = "${ctx}/excel/download";
-        var form = document.createElement("form");
-        var frag = document.createDocumentFragment();
-        frag.appendChild(form);
-        form.method = 'post';
-        form.action = url;
-        form.target = '_blank';
-        // 创建隐藏表单
-        var element = document.createElement("input");
-        element.setAttribute("type", "hidden");
-        element.setAttribute("name", "id");
-        element.setAttribute("value", id);
-        form.appendChild(element);
-        document.body.appendChild(frag);
-        form.submit();
-    }
 
 </script>
 
