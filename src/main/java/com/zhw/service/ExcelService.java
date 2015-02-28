@@ -51,19 +51,25 @@ public class ExcelService {
             File dir = new File(TEMP_DIR + File.separator + id);
             dir.mkdirs();
             File combineCSV = combineToCSV(dir, files);
-            File combineExcel = combineToExcel(dir, files);
+            File combineExcel = null;
+            if (combineToExcel) {
+                combineExcel = combineToExcel(dir, files);
+            }
             // 处理结果
-            File resultExcel = this.resultExcel(recordDay, dir, combineCSV, min, max);
+            File resultExcel = null;
+            if (processResult) {
+                resultExcel = this.resultExcel(recordDay, dir, combineCSV, min, max);
+            }
+
             logger.info("处理完成开始压缩文件");
-            if (!combineToExcel || combineExcel == null) {
-                logger.info("内存溢出，无法完成合并Excel");
-                if (!processResult || resultExcel == null) {
+            if (combineExcel == null) {
+                if (resultExcel == null) {
                     zip = Files.zip(TEMP_DIR + File.separator + id + File.separator + "结果.zip", combineCSV);
                 } else {
                     zip = Files.zip(TEMP_DIR + File.separator + id + File.separator + "结果.zip", combineCSV, resultExcel);
                 }
             } else {
-                if (!processResult || resultExcel == null) {
+                if (resultExcel == null) {
                     zip = Files.zip(TEMP_DIR + File.separator + id + File.separator + "结果.zip", combineCSV, combineExcel);
                 } else {
                     zip = Files.zip(TEMP_DIR + File.separator + id + File.separator + "结果.zip", combineCSV, combineExcel, resultExcel);
@@ -180,113 +186,111 @@ public class ExcelService {
     public File resultExcel(String recordDay, File dir, File combineCSV, String min, String max) {
         logger.info("开始处理最终结果文件");
         File result = null;
+        //创建工作文档对象
+        Workbook wb = null;
+        OutputStream stream = null;
+        BufferedReader in = null;
         try {
-            //创建工作文档对象
-            Workbook wb = null;
-            OutputStream stream = null;
+            in = new BufferedReader(new InputStreamReader(new FileInputStream(combineCSV), "gbk"));
+
             // 创建Excel文件
             wb = new XSSFWorkbook();
+
+            // 创建文本格式
             CellStyle txtStyle = wb.createCellStyle();
             DataFormat format = wb.createDataFormat();
             txtStyle.setDataFormat(format.getFormat("@"));
-
+            // 创建小数点后保留两位的数字格式
             CellStyle decimalStyle = wb.createCellStyle();
             decimalStyle.setDataFormat(format.getFormat("0.00"));
             // 创建Sheet1
             Sheet sheet1 = (Sheet) wb.createSheet("sheet1");
             // 结果文件行,0行是表头
             int rowIndex = 1;
-            BufferedReader in = null;
-            try {
-                in = new BufferedReader(new InputStreamReader(new FileInputStream(combineCSV), "gbk"));
-                // 写表头
-                Row row = (Row) sheet1.createRow(0);
-                List<String> titleList = Lists.newArrayList(TITLES);
-                titleList.set(25, recordDay);
-                for (int i = 0; i < titleList.size(); i++) {
+
+            // 写表头
+            Row row = (Row) sheet1.createRow(0);
+            List<String> titleList = Lists.newArrayList(TITLES);
+            titleList.set(25, recordDay);
+            for (int i = 0; i < titleList.size(); i++) {
+                Cell cell = row.createCell(i);
+                cell.setCellStyle(txtStyle);
+                cell.setCellValue(titleList.get(i));
+            }
+
+            // 遍历合并后的CSV文件
+            String line = null;
+            while ((line = in.readLine()) != null) {
+                row = (Row) sheet1.createRow(rowIndex);
+                String[] src = line.split(",", -1);
+                // 序号	分行号 分行	客户号 客户名 货币 余额 折港币余额 折港币余额（万元） 放款/还款到期日 逾期期数 逾期天数范围 逾期天数 综合评 产品码 贷款业务品种
+                // 循环处理每个字段
+                for (int i = 0; i < 16; i++) {
                     Cell cell = row.createCell(i);
                     cell.setCellStyle(txtStyle);
-                    cell.setCellValue(titleList.get(i));
-                }
-
-                // 遍历合并后的CSV文件
-                String line = null;
-                while ((line = in.readLine()) != null) {
-                    row = (Row) sheet1.createRow(rowIndex);
-                    String[] src = line.split(",", -1);
-                    // 序号	分行号 分行	客户号 客户名 货币 余额 折港币余额 折港币余额（万元） 放款/还款到期日 逾期期数 逾期天数范围 逾期天数 综合评 产品码 贷款业务品种
-                    // 循环处理每个字段
-                    for (int i = 0; i < 16; i++) {
-                        Cell cell = row.createCell(i);
-                        cell.setCellStyle(txtStyle);
-                        if (i == 0) {
-                            // 序号
-                            cell.setCellValue(rowIndex);
-                        } else if (i == 1) {
-                            // 分行号
-                            cell.setCellValue(getValue(src[1]));
-                        } else if (i == 2) {
-                            // 分行
-                            cell.setCellValue(getCode(src[1]));
-                        } else if (i == 3) {
-                            // 客户号
-                            cell.setCellValue(getValue(src[14]));
-                        }
+                    if (i == 0) {
+                        // 序号
+                        cell.setCellValue(rowIndex);
+                    } else if (i == 1) {
+                        // 分行号
+                        cell.setCellValue(getValue(src[1]));
+                    } else if (i == 2) {
+                        // 分行
+                        cell.setCellValue(getCode(src[1]));
+                    } else if (i == 3) {
+                        // 客户号
+                        cell.setCellValue(getValue(src[14]));
+                    }
 //                        else if (i == 4) {
 //                            // 客户名
 //                        }
-                        else if (i == 5) {
-                            // 货币
-                            cell.setCellValue("CNY");
-                        } else if (i == 6) {
-                            // 余额
-                            cell.setCellValue(getMoneyValue(src[22]));
-                        } else if (i == 7) {
-                            // 折港币余额
-                            cell.setCellValue(getMoneyValue(src[23]));
-                        } else if (i == 8) {
-                            // 折港币余额（万元）
-                            cell.setCellStyle(decimalStyle);
-                            cell.setCellValue(divisibleTenThousand(getMoneyValue(src[23]), 2));
-                        } else if (i == 9) {
-                            // 放款/还款到期日
-                            cell.setCellValue(getValue(src[27]));
-                        } else if (i == 10) {
-                            // 逾期期数
-                            // 不予期
-                            cell.setCellValue(getOverdue(recordDay, getValue(src[27])));
-                        } else if (i == 11) {
-                            // 逾期天数范围
-                            cell.setCellValue(getOverdueDayRange(recordDay, getValue(src[27])));
-                        } else if (i == 12) {
-                            // 逾期天数
-                            cell.setCellValue(getOverdueDay(recordDay, getValue(src[27])));
-                        } else if (i == 13) {
-                            // 综合评 用自动评代码取寻找
-                            cell.setCellValue(getCode(src[31]));
-                        } else if (i == 14) {
-                            // 产品码
-                            cell.setCellValue(getValue(src[150]));
-                        } else if (i == 15) {
-                            // 贷款业务品种
-                            cell.setCellValue(getCode(src[150]));
-                        }
+                    else if (i == 5) {
+                        // 货币
+                        cell.setCellValue("CNY");
+                    } else if (i == 6) {
+                        // 余额
+                        cell.setCellValue(getMoneyValue(src[22]));
+                    } else if (i == 7) {
+                        // 折港币余额
+                        cell.setCellValue(getMoneyValue(src[23]));
+                    } else if (i == 8) {
+                        // 折港币余额（万元）
+                        cell.setCellStyle(decimalStyle);
+                        cell.setCellValue(divisibleTenThousand(getMoneyValue(src[23]), 2));
+                    } else if (i == 9) {
+                        // 放款/还款到期日
+                        cell.setCellValue(getValue(src[27]));
+                    } else if (i == 10) {
+                        // 逾期期数
+                        // 不予期
+                        cell.setCellValue(getOverdue(recordDay, getValue(src[27])));
+                    } else if (i == 11) {
+                        // 逾期天数范围
+                        cell.setCellValue(getOverdueDayRange(recordDay, getValue(src[27])));
+                    } else if (i == 12) {
+                        // 逾期天数
+                        cell.setCellValue(getOverdueDay(recordDay, getValue(src[27])));
+                    } else if (i == 13) {
+                        // 综合评 用自动评代码取寻找
+                        cell.setCellValue(getCode(src[31]));
+                    } else if (i == 14) {
+                        // 产品码
+                        cell.setCellValue(getValue(src[150]));
+                    } else if (i == 15) {
+                        // 贷款业务品种
+                        cell.setCellValue(getCode(src[150]));
                     }
-                    rowIndex++;
                 }
-                // 统一设置 采取的措施 有效性数据 电话催收/上门催收
-                DataValidation dataValidation = getDataValidation((XSSFSheet) sheet1, 1, rowIndex, 18, 18);
-                sheet1.addValidationData(dataValidation);
+                rowIndex++;
+            }
+            // 统一设置 采取的措施 有效性数据 电话催收/上门催收
+            DataValidation dataValidation = getDataValidation((XSSFSheet) sheet1, 1, rowIndex, 18, 18);
+            sheet1.addValidationData(dataValidation);
 
-                // 统一设置 催收时间 时间范围
-                DataValidation dataRangeValidation = getDataRangeValidation((XSSFSheet) sheet1, 1, rowIndex, 19, 19, min, max);
-                if (dataRangeValidation != null) {
-                    sheet1.addValidationData(dataRangeValidation);
-                }
-            } catch (Exception e) {
-                IOUtils.closeQuietly(in);
-                logger.warn("处理最终结果文件异常", e);
-                return null;
+            // 统一设置 催收时间 时间范围
+            DataValidation dataRangeValidation = getDataRangeValidation((XSSFSheet) sheet1, 1, rowIndex, 19, 19, min, max);
+            if (dataRangeValidation != null) {
+                sheet1.addValidationData(dataRangeValidation);
             }
             // 创建文件流
             result = new File(dir.getAbsolutePath() + File.separator + "result.xlsx");
@@ -294,7 +298,11 @@ public class ExcelService {
             // 写入数据
             wb.write(stream);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.warn("处理最终结果文件异常", e);
+            return null;
+        } finally {
+            IOUtils.closeQuietly(in);
+            IOUtils.closeQuietly(wb);
         }
         return result;
 
@@ -473,7 +481,7 @@ public class ExcelService {
             minDay = DateTime.parse(min, YYYY_MM_DD);
             maxDay = DateTime.parse(max, YYYY_MM_DD);
         } catch (Exception e) {
-            logger.info("设置时间范围失败 min : " + min + ", max : " + max + "", e);
+            logger.info("设置时间范围失败 min : {}, max : {}", min, max);
             return null;
         }
         List<String> arrays = Lists.newArrayList();
@@ -484,7 +492,7 @@ public class ExcelService {
                 break;
             }
         }
-        String[] days = (String[])arrays.toArray(new String[]{});
+        String[] days = (String[]) arrays.toArray(new String[]{});
         XSSFDataValidationHelper helper = new XSSFDataValidationHelper(sheet);
         DataValidationConstraint constraint = helper.createExplicitListConstraint(days);
         // 设置数据有效性加载在哪个单元格上。 四个参数分别是：起始行、终止行、起始列、终止列

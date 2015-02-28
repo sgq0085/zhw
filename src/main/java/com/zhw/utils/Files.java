@@ -17,6 +17,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.util.*;
+
 import org.apache.tools.zip.ZipOutputStream;
 import org.apache.tools.zip.ZipEntry;
 
@@ -32,8 +33,8 @@ public class Files {
     /**
      * 上传文件
      *
-     * @param  request    HttpRequest
-     * @param  dir        目标目录
+     * @param request HttpRequest
+     * @param dir     目标目录
      * @return List<File> 文件列表
      */
     public static List<File> uploadFile(HttpServletRequest request, File dir) {
@@ -103,10 +104,10 @@ public class Files {
      * 上传文件
      *
      * @param request HttpRequest
-     * @param dir 目标目录 为空时自动建立
-     * <p>
-     *     返回结果包含两个key，params(<String, String> 普通返回值) 和 files(List<File>文件队列)
-     * </p>
+     * @param dir     目标目录 为空时自动建立
+     *                <p>
+     *                返回结果包含两个key，params(<String, String> 普通返回值) 和 files(List<File>文件队列)
+     *                </p>
      * @return Map<String, Object>
      */
     public static Map<String, Object> enctypeEqualsMultipartFormData(HttpServletRequest request, File dir) {
@@ -249,7 +250,7 @@ public class Files {
             try {
                 response.reset();
                 response.setContentType("application/x-msdownload;charset=UTF-8");
-                if (null != agent && agent.contains("MSIE")) {
+                if (null != agent && (agent.contains("MSIE") || agent.contains("like Gecko"))) {
                     if (null == fileName || "".equals(fileName)) {
                         response.setHeader(
                                 "Content-Disposition",

@@ -18,6 +18,11 @@
             <bean class="org.springframework.http.converter.StringHttpMessageConverter">
                 <constructor-arg value="UTF-8"/>
             </bean>
+            <!-- 解决IE9 Ajax出现下载的问题 -->
+            <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter">
+                <!--<property name="supportedMediaTypes" value="text/html; charset=UTF-8"/>-->
+                <property name="supportedMediaTypes" value="text/plain;charset=UTF-8"/>
+            </bean>
         </mvc:message-converters>
     </mvc:annotation-driven>
 
@@ -41,7 +46,7 @@
     <mvc:default-servlet-handler/>
 
     <!-- 定义无需Controller的url<->view直接映射 -->
-    <mvc:view-controller path="/" view-name="portal" />
+    <mvc:view-controller path="/" view-name="portal"/>
 
     <!-- 将Controller抛出的异常转到特定View, 保持SiteMesh的装饰效果 -->
     <bean class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">

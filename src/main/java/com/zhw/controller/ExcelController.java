@@ -1,5 +1,6 @@
 package com.zhw.controller;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.zhw.service.ExcelService;
 import com.zhw.utils.Files;
@@ -33,11 +34,12 @@ public class ExcelController {
     private ExcelService excelService;
 
     @RequestMapping(value = "/upload", method = RequestMethod.POST)
-    public ResponseEntity<Map<String, Object>> upload(HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> upload(/*HttpServletRequest request,*/String recordDay, String file
+            , String min, String max, String combineToExcel, String processResult) {
         Map<String, Object> res = Maps.newHashMap();
-        res.put("success", true);
+        res.put("success", false);
 
-        Map<String, Object> multipartFormData = Files.enctypeEqualsMultipartFormData(request, null);
+        /*Map<String, Object> multipartFormData = Files.enctypeEqualsMultipartFormData(request, null);
         Map<String, String> params = (Map<String, String>) multipartFormData.get("params");
         String recordDay = params.get("recordDay");
         // 是否合并Excel
@@ -52,6 +54,19 @@ public class ExcelController {
             res.put("success", false);
             res.put("msg", "没有选择日期或源文件");
             return new ResponseEntity<Map<String, Object>>(res, HttpStatus.OK);
+        }*/
+        List<File> files = null;
+        try {
+            File src = new File(file);
+            File[] fileArray = src.listFiles();
+            if (!src.exists() || fileArray == null || fileArray.length < 1 || StringUtils.isBlank(recordDay)) {
+                res.put("msg", "没有选择日期或源文件");
+                return new ResponseEntity<Map<String, Object>>(res, HttpStatus.OK);
+            }
+            files = Lists.newArrayList(fileArray);
+        } catch (Exception e) {
+            res.put("msg", "处理文件错误");
+            return new ResponseEntity<Map<String, Object>>(res, HttpStatus.OK);
         }
         logger.info("启动任务 记账日期{},文件数{}", recordDay, files.size());
 
@@ -60,6 +75,7 @@ public class ExcelController {
             return new ResponseEntity<Map<String, Object>>(res, HttpStatus.FORBIDDEN);
         }
         res.put("id", id);
+        res.put("success", true);
         return new ResponseEntity<Map<String, Object>>(res, HttpStatus.OK);
     }
 
@@ -67,7 +83,7 @@ public class ExcelController {
     @ResponseBody
     public void download(HttpServletRequest request, HttpServletResponse response, String id) {
         File file = new File(excelService.TEMP_DIR + File.separator + id + File.separator + "结果.zip");
-        System.out.println(file.getAbsolutePath());
+        logger.info(file.getAbsolutePath());
         if (file.exists()) {
             Files.download(request, response, file, null, false);
         }

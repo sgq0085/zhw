@@ -12,13 +12,13 @@
 </ul>
 
 <form id="form" action="${ctx}/excel/upload" class="form-horizontal" method="post"
-      enctype="multipart/form-data">
+      <%--enctype="multipart/form-data"--%>>
     <div class="form-group">
         <label class="col-lg-3 col-md-3 control-label" for="recordDay">
             <span style="color: red">*</span>记账日期：
         </label>
 
-        <div class="col-lg-4 col-md-4">
+        <div class="col-lg-5 col-md-5">
             <div id="record" class="input-group date form_date">
                 <input id="recordDay" class="form-control input-sm" name="recordDay" type="text"/>
                 <span class="input-group-addon input-sm btn">
@@ -56,8 +56,10 @@
         <label class="col-lg-3 col-md-3 control-label" for="file_input">
             <span style="color: red">*</span>源文件：</label>
 
-        <div class="col-lg-4 col-md-4">
-            <input id="file_input" name="file" type="file" multiple="multiple">
+        <div class="col-lg-5 col-md-5">
+            <%--text--%>
+            <%--<input id="file_input" name="file" type="file" multiple="multiple">--%>
+                <input id="file_input" name="file" type="text" style="width: 100%;">
         </div>
     </div>
     <div class="form-group">
@@ -75,7 +77,8 @@
 </form>
 <script type="text/javascript">
     $(function () {
-        $("#file_input").fileinput({
+        /*IE9不支持文件多选*/
+        /*$("#file_input").fileinput({
             overwriteInitial: true,
             allowedPreviewTypes: ['text'],
             showUpload: false,
@@ -84,7 +87,7 @@
             removeClass: "btn btn-danger",
             browseLabel: "选择文件",
             browseClass: "btn btn-primary"
-        });
+        });*/
 
         $('.form_date').datetimepicker({
             language: 'zh-CN',
@@ -136,8 +139,18 @@
             bs_info('开始上传文件等待处理!');
             $("#submit").attr("disabled", true);
             $("#form").ajaxSubmit({
-                url: "${ctx}/excel/upload",
+                url: "${ctx}/excel/upload?timestamp=" + new Date().getTime(),
                 success: function (event, status, xhr) {
+                    console.info(event);
+                    // IE9特殊处理
+                    if (event.indexOf("<pre>") > -1) {
+                        event = event.substring(5, event.length - 6);
+
+                    }
+                    console.info(event);
+                    // 为了兼容IE9 返回值类型为 text/plain;charset=UTF-8
+                    event = JSON.parse(event);
+                    console.info(event);
                     if (event.success == true) {
                         download(event.id);
                         $("#submit").attr("disabled", false);
